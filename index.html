@@ -167,7 +167,7 @@
             let source=row.domain||new URL(url).hostname;source=source.replace(/^www\./,'');
             const rawDate=row.seendate||'';let publishedAt=null;
             if(/^\d{8}T\d{6}Z$/.test(rawDate)){const d=new Date(rawDate.slice(0,4)+'-'+rawDate.slice(4,6)+'-'+rawDate.slice(6,8)+'T'+rawDate.slice(9,11)+':'+rawDate.slice(11,13)+':'+rawDate.slice(13,15)+'Z');if(!Number.isNaN(d.getTime()))publishedAt=d.toISOString()}
-            return {title:String(row.title).slice(0,240),summary:'',url,source,category:'Local',publishedAt};
+            return {title:String(row.title).slice(0,240),summary:'',url,source,category:'Local',publishedAt,imageUrl:(row.socialimage||row.image||null)};
           }).filter(Boolean);
           localGrid.replaceChildren();
           if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos resultados recentes para '+target+'. Tente outra forma de escrever ou selecione a cidade.';localGrid.append(empty);localStatus.textContent='Busca concluída · janela dos últimos 7 dias.';return}
