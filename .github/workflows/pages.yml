@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p _site/data
           python3 scripts/fetch_news.py --output _site/data/news.json
-          cp index.html _site/index.html
+          cp index.html article.html admin.html analytics-config.js _site/\n          cp index.html _site/index.html
           touch _site/.nojekyll
       - name: Enviar os arquivos do site
         uses: actions/upload-pages-artifact@v4
