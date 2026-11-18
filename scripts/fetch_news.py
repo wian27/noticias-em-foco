@@ -206,28 +206,6 @@ def query_gdelt(query: str, region_key: str, region_name: str, state_code: str) 
 
 
 def build_local_news() -> dict:
-    specs = []
-    for code, name in STATE_NAMES.items():
-        specs.append({
-            "key": f"state:{code}", "type": "state", "name": name, "stateCode": code,
-            "query": f'"{name}" sourcelang:Portuguese sourcecountry:BR',
-        })
-
-    results: dict[str, list[dict[str, str | None]]] = {}
-    errors = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        future_map = {
-            executor.submit(query_gdelt, spec["query"], spec["key"], spec["name"], spec["stateCode"]): spec
-            for spec in specs
-        }
-        for future in concurrent.futures.as_completed(future_map):
-            spec = future_map[future]
-            try:
-                results[spec["key"]] = future.result()
-            except (OSError, ValueError, urllib.error.URLError, TimeoutError) as exc:
-                results[spec["key"]] = []
-                errors.append(f'{spec["key"]}: {exc}')
-
     locations = [
         {"key": f"state:{code}", "type": "state", "name": name, "stateCode": code}
         for code, name in STATE_NAMES.items()
@@ -237,33 +215,13 @@ def build_local_news() -> dict:
          "stateCode": code, "lat": lat, "lon": lon}
         for city, code, lat, lon in CITY_REGIONS
     )
-
-    # A state's page combines its state-name search with city searches in that state.
-    for code in STATE_NAMES:
-        key = f"state:{code}"
-        seen = {item["url"] for item in results.get(key, [])}
-        for city, city_code, _, _ in CITY_REGIONS:
-            if city_code != code:
-                continue
-            for item in results.get(f"city:{slug(city)}-{code.lower()}", []):
-                if item["url"] not in seen:
-                    results[key].append(item)
-                    seen.add(item["url"])
-
-    unique_articles = {}
-    for items in results.values():
-        for item in items:
-            unique_articles.setdefault(item["url"], item)
-
     return {
         "fetchedAt": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
-        "source": "GDELT DOC 2.0 · links para as publicações originais",
+        "source": "GDELT DOC 2.0 · consulta regional sob demanda",
         "locations": locations,
-        "regions": results,
-        "articles": list(unique_articles.values()),
-        "errors": errors,
+        "regions": {},
+        "articles": [],
     }
-
 
 def main() -> int:
     parser = argparse.ArgumentParser()
