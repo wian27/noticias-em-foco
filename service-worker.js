@@ -17,8 +17,8 @@ self.addEventListener('activate',event=>{
 self.addEventListener('fetch',event=>{
   const request=event.request;
   if(request.method!=='GET'||new URL(request.url).origin!==self.location.origin)return;
-  event.respondWith(fetch(request).then(response=>{
-    if(response&&response.ok)caches.open(CACHE_NAME).then(cache=>cache.put(request,response.clone()));
+  event.respondWith(fetch(request).then(async response=>{
+    if(response&&response.ok)await caches.open(CACHE_NAME).then(cache=>cache.put(request,response.clone()));
     return response;
   }).catch(async()=>{
     const cached=await caches.match(request);
