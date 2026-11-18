@@ -109,6 +109,12 @@
       function renderLocalRegion(key){
         if(!localPayload||!key)return;
         const label=localPayload.locations.find(item=>item.key===key);
+        if(label&&label.type==='city'){
+          document.getElementById('city-search').value=label.name;
+          document.getElementById('city-state').value=label.stateCode;
+          searchAnyCity();
+          return;
+        }
         let sourceKey=key;
         let articles=(localPayload.regions&&localPayload.regions[sourceKey]||[]).slice();
         let fallback=false;
