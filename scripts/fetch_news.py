@@ -128,7 +128,7 @@ def official_image_url(value: str, article_url: str) -> str | None:
     if parsed.scheme != "https" or not (host == "ebc.com.br" or host.endswith(".ebc.com.br")):
         return None
     # EBC's RSS endpoint returns this 1×1 tracking pixel as a media enclosure.
-    if parsed.path.rstrip("/").rsplit("/", 1)[-1].lower() in {"ebc.png", "ebc.gif"}:
+    if parsed.path.rstrip("/").rsplit("/", 1)[-1].lower() in {"ebc.png", "ebc.gif", "loading_v2.gif"}:
         return None
     return image_url
 
