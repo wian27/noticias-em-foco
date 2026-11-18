@@ -156,6 +156,46 @@ def feed_image_url(item: ET.Element, article_url: str) -> str | None:
     return None
 
 
+
+class ArticleImageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.urls: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        values = {key.lower(): value for key, value in attrs}
+        if tag.lower() == "meta":
+            key = (values.get("property") or values.get("name") or "").lower()
+            if key in {"og:image", "og:image:url", "twitter:image", "twitter:image:src"}:
+                content = values.get("content")
+                if content:
+                    self.urls.append(content.strip())
+        elif tag.lower() == "link" and "image_src" in (values.get("rel") or "").lower():
+            href = values.get("href")
+            if href:
+                self.urls.append(href.strip())
+
+
+def article_image_url(article_url: str) -> str | None:
+    request = urllib.request.Request(
+        article_url,
+        headers={"User-Agent": "Mozilla/5.0 (compatible; NoticiasEmFoco/1.0; +https://github.com/wian27/noticias-em-foco)",
+                 "Accept": "text/html,application/xhtml+xml"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=12) as response:
+            if response.status != 200:
+                return None
+            parser = ArticleImageParser()
+            parser.feed(response.read(1_500_000).decode("utf-8", errors="replace"))
+    except (OSError, urllib.error.URLError, TimeoutError, UnicodeError):
+        return None
+    for candidate in parser.urls:
+        image = official_image_url(candidate, article_url)
+        if image:
+            return image
+    return None
+
 def parse_date(value: str) -> str | None:
     if not value:
         return None
@@ -304,6 +344,13 @@ def main() -> int:
         key=lambda item: item["publishedAt"] or "",
         reverse=True,
     )[:36]
+    # Some official RSS entries omit media tags. Read the article's Open Graph
+    # metadata for the first visible stories so their cards can still show photos.
+    image_targets = [item for item in articles[:18] if not item.get("imageUrl")]
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        for item, image in zip(image_targets, pool.map(lambda row: article_image_url(row["url"]), image_targets)):
+            if image:
+                item["imageUrl"] = image
     payload = {
         "fetchedAt": dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z"),
         "source": SOURCE,
