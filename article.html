@@ -32,8 +32,10 @@
     (async()=>{
       if(!requested){fail('Volte à página inicial e selecione uma das matérias disponíveis.');return}
       try{
-        const response=await fetch('./data/news.json',{cache:'no-store'});if(!response.ok)throw new Error();
-        const payload=await response.json();const item=(payload.articles||[]).find(row=>safeUrl(row.url)===safeUrl(requested));
+        const [nationalResponse,localResponse]=await Promise.all([fetch('./data/news.json',{cache:'no-store'}),fetch('./data/local-news.json',{cache:'no-store'})]);
+        const nationalPayload=nationalResponse.ok?await nationalResponse.json():{articles:[]};
+        const localPayload=localResponse.ok?await localResponse.json():{articles:[]};
+        const item=(nationalPayload.articles||[]).find(row=>safeUrl(row.url)===safeUrl(requested))||(localPayload.articles||[]).find(row=>safeUrl(row.url)===safeUrl(requested));
         if(!item)throw new Error();
         const original=safeUrl(item.url);if(!original)throw new Error();
         document.title=item.title+' — Em Foco';
