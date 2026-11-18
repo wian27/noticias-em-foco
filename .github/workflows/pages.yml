@@ -32,6 +32,9 @@ jobs:
           mkdir -p _site/data
           python3 scripts/fetch_news.py --output _site/data/news.json --local-output _site/data/local-news.json
           cp index.html article.html admin.html analytics-config.js _site/
+          cp manifest.webmanifest service-worker.js _site/
+          mkdir -p _site/icons
+          cp icons/*.svg _site/icons/
           cp index.html _site/index.html
           touch _site/.nojekyll
       - name: Enviar os arquivos do site
