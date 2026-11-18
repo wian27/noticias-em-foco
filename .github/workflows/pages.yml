@@ -25,6 +25,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Preparar o GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Buscar notícias nas fontes RSS
         run: |
           mkdir -p _site/data
