@@ -46,7 +46,7 @@
       <div class="local-custom"><input id="city-search" type="search" maxlength="70" placeholder="Digite qualquer cidade" aria-label="Digite uma cidade"><select id="city-state" aria-label="Estado da cidade"><option value="">Estado (opcional)</option></select><button class="locate-button" id="search-city" type="button">Buscar cidade</button></div>
       <div class="local-status" id="local-status" aria-live="polite">Escolha uma cidade/estado ou busque outra cidade. A localização só é consultada se você tocar no botão.</div>
       <div class="local-grid story-grid" id="local-grid"></div>
-      <div class="local-meta-note">Notícias locais: busca GDELT por cidade/estado, com link e fonte da publicação original. Atualização diária.</div>
+      <div class="local-meta-note">Notícias locais: busca GDELT por cidade/estado, com fonte e link original. Resultados consultados sob demanda, dos últimos 7 dias.</div>
     </section>
     <section id="brasil"><div class="section-head"><div><div class="eyebrow">Reportagens e contexto</div><h2>Do Brasil ao mundo</h2></div><p>Leituras para entender o que está acontecendo</p><a class="see-all" href="#ultimas">Ver todas ↗</a></div>
       <div class="content-layout"><div><div class="story-grid" id="story-grid">
@@ -108,23 +108,10 @@
       const selectedRegionKey='emfoco.local.region.v1';
       function renderLocalRegion(key){
         if(!localPayload||!key)return;
-        const label=localPayload.locations.find(item=>item.key===key);
-        if(label&&label.type==='city'){
-          document.getElementById('city-search').value=label.name;
-          document.getElementById('city-state').value=label.stateCode;
-          searchAnyCity();
-          return;
-        }
-        let sourceKey=key;
-        let articles=(localPayload.regions&&localPayload.regions[sourceKey]||[]).slice();
-        let fallback=false;
-        if(!articles.length&&label&&label.type==='city'){sourceKey='state:'+label.stateCode;articles=(localPayload.regions&&localPayload.regions[sourceKey]||[]).slice();fallback=articles.length>0}
-        articles.sort((a,b)=>(b.publishedAt||'').localeCompare(a.publishedAt||''));
-        articles=articles.slice(0,6);
-        localGrid.replaceChildren();
-        if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos chamadas recentes para esta região. Tente buscar a cidade pelo campo acima ou selecione o estado.';localGrid.append(empty);return}
-        localGrid.replaceChildren(...articles.map(story));
-        localStatus.textContent=(fallback?'Sem matérias específicas desta cidade; mostrando notícias do estado. ':'Notícias para ')+(label?label.name+(label.type==='city'?' · '+label.stateCode:''):'sua região')+' · '+articles.length+' matéria(s) · atualizado em '+formatTime(localPayload.fetchedAt);
+        const label=localPayload.locations.find(item=>item.key===key);if(!label)return;
+        document.getElementById('city-search').value=label.type==='city'?label.name:'';
+        document.getElementById('city-state').value=label.stateCode;
+        searchAnyCity();
       }
       async function loadLocalNews(){
         try{
@@ -135,14 +122,14 @@
           const cities=locations.filter(item=>item.type==='city').sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
           const stateGroup=document.createElement('optgroup');stateGroup.label='Estados';
           states.forEach(item=>{const option=document.createElement('option');option.value=item.key;option.textContent=item.name+' ('+item.stateCode+')';stateGroup.append(option)});
-          const cityGroup=document.createElement('optgroup');cityGroup.label='Cidades com busca disponível';
+          const cityGroup=document.createElement('optgroup');cityGroup.label='Capitais e cidades de Mato Grosso';
           cities.forEach(item=>{const option=document.createElement('option');option.value=item.key;option.textContent=item.name+' · '+item.stateCode;cityGroup.append(option)});
           localSelect.replaceChildren(new Option('Selecione uma região',''),stateGroup,cityGroup);
           const saved=localStorage.getItem(selectedRegionKey);
           if(saved&&locations.some(item=>item.key===saved)){localSelect.value=saved;renderLocalRegion(saved)}
-          else localStatus.textContent='Selecione seu estado ou uma cidade. A base local é atualizada uma vez por dia.';
+          else localStatus.textContent='Selecione um estado/cidade ou digite outra cidade. A busca consulta notícias dos últimos 7 dias.';
           localSelect.addEventListener('change',()=>{const key=localSelect.value;if(key){localStorage.setItem(selectedRegionKey,key);renderLocalRegion(key)}else{localStorage.removeItem(selectedRegionKey);localGrid.replaceChildren();localStatus.textContent='Selecione um estado ou cidade para ver as notícias locais.'}});
-        }catch(error){localStatus.textContent='Não foi possível carregar as notícias regionais agora. As notícias nacionais e mundiais continuam disponíveis.';const empty=document.createElement('div');empty.className='local-empty';empty.textContent='A seção regional será preenchida quando a atualização diária da fonte local terminar.';localGrid.replaceChildren(empty)}
+        }catch(error){localStatus.textContent='Não foi possível carregar as notícias regionais agora. As notícias nacionais e mundiais continuam disponíveis.';const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Escolha uma cidade ou estado para consultar as notícias regionais.';localGrid.replaceChildren(empty)}
       }
       function distanceKm(a,b){const rad=value=>value*Math.PI/180;const dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon);const x=Math.sin(dLat/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLon/2)**2;return 6371*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
       function initCityState(){
@@ -155,13 +142,14 @@
         const input=document.getElementById('city-search');
         const raw=input.value.trim();
         const city=raw.replace(/[^\p{L}\p{M}\s.'-]/gu,'').trim().slice(0,70);
-        if(city.length<2){localStatus.textContent='Digite o nome de uma cidade para buscar.';return}
+        const code=document.getElementById('city-state').value;
+        const state=code&&localPayload?localPayload.locations.find(item=>item.key==='state:'+code):null;
+        if(city.length<2&&!state){localStatus.textContent='Digite uma cidade ou escolha um estado.';return}
+        const target=city||state.name;
         const button=document.getElementById('search-city');button.disabled=true;
-        localStatus.textContent='Buscando notícias recentes para '+city+'…';
+        localStatus.textContent='Buscando notícias recentes para '+target+'…';
         try{
-          const code=document.getElementById('city-state').value;
-          const state=code&&localPayload?localPayload.locations.find(item=>item.key==='state:'+code):null;
-          const terms=['"'+city+'"'];if(state)terms.push('"'+state.name+'"');
+          const terms=[];if(city)terms.push('"'+city+'"');if(state)terms.push('"'+state.name+'"');
           terms.push('sourcelang:Portuguese','sourcecountry:BR');
           const params=new URLSearchParams({query:terms.join(' '),mode:'ArtList',format:'json',maxrecords:'12',timespan:'7d',sort:'DateDesc'});
           const response=await fetch('https://api.gdeltproject.org/api/v2/doc/doc?'+params.toString(),{headers:{Accept:'application/json'}});
@@ -175,10 +163,10 @@
             return {title:String(row.title).slice(0,240),summary:'',url,source,category:'Local',publishedAt};
           }).filter(Boolean);
           localGrid.replaceChildren();
-          if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos resultados recentes para '+city+'. Tente o estado ou outra forma de escrever a cidade.';localGrid.append(empty);localStatus.textContent='Busca municipal concluída · últimos 7 dias.';return}
+          if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos resultados recentes para '+target+'. Tente outra forma de escrever ou selecione a cidade.';localGrid.append(empty);localStatus.textContent='Busca concluída · janela dos últimos 7 dias.';return}
           localGrid.replaceChildren(...articles.slice(0,6).map(story));
-          localStatus.textContent=articles.length+' notícia(s) encontrada(s) para '+city+(state?' · '+state.name:'')+' · fonte GDELT · últimos 7 dias. A busca envia apenas o nome da cidade/estado à fonte.';
-        }catch(error){localGrid.replaceChildren();localStatus.textContent='Não foi possível consultar a busca municipal agora. Tente escolher uma região da lista ou volte mais tarde.'}
+          localStatus.textContent=articles.length+' notícia(s) encontrada(s) para '+target+(state?' · '+state.name:'')+' · fonte GDELT · últimos 7 dias. A busca envia apenas o nome da cidade/estado à fonte.';
+        }catch(error){localGrid.replaceChildren();localStatus.textContent='A busca regional está temporariamente limitada pela fonte. Tente novamente mais tarde.'}
         finally{button.disabled=false}
       }
       document.getElementById('search-city').addEventListener('click',searchAnyCity);
