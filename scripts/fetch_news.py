@@ -212,12 +212,6 @@ def build_local_news() -> dict:
             "key": f"state:{code}", "type": "state", "name": name, "stateCode": code,
             "query": f'"{name}" sourcelang:Portuguese sourcecountry:BR',
         })
-    for city, code, lat, lon in CITY_REGIONS:
-        specs.append({
-            "key": f"city:{slug(city)}-{code.lower()}", "type": "city", "name": city,
-            "stateCode": code, "lat": lat, "lon": lon,
-            "query": f'"{city}" "{STATE_NAMES[code]}" sourcelang:Portuguese sourcecountry:BR',
-        })
 
     results: dict[str, list[dict[str, str | None]]] = {}
     errors = []
