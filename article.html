@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f5f0">
+  <meta name="description" content="Leia o resumo da notícia no Em Foco e consulte a publicação original da fonte identificada.">
+  <title>Notícia — Em Foco</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{--ink:#17231f;--muted:#68766e;--paper:#f7f5f0;--white:#fffefa;--line:#e2e4dd;--green:#186c50;--mint:#dcefe5;--serif:Georgia,'Times New Roman',serif;--sans:'DM Sans',Arial,sans-serif;--display:'Manrope',Arial,sans-serif}
+    *{box-sizing:border-box}body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}a{color:inherit;text-decoration:none}.wrap{width:min(1060px,calc(100% - 36px));margin:auto}
+    .top{background:#173d32;color:#dcefe5;padding:9px 0;font-size:11px}.head{border-bottom:1px solid var(--line);background:var(--paper)}.head-inner{height:82px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:11px}.mark{height:42px;width:42px;border-radius:14px;background:var(--green);color:white;display:grid;place-items:center;font:800 18px var(--display);transform:rotate(-3deg)}.brand-name{font:800 25px/.95 var(--display);letter-spacing:-1.2px}.brand-name b{color:var(--green)}.brand small{display:block;color:var(--muted);font-size:10px;margin-top:6px;letter-spacing:.05em}.back{color:var(--green);font-size:12px;font-weight:800}
+    main{padding:48px 0 82px}.article{max-width:770px;margin:auto}.kicker{display:flex;gap:10px;align-items:center;color:var(--green);font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.13em}.kicker:before{content:'';width:22px;height:2px;background:#e5b77b}.article h1{font:700 clamp(36px,6vw,62px)/1.04 var(--serif);letter-spacing:-1.3px;margin:19px 0 17px}.summary{font-size:clamp(17px,2.2vw,21px);line-height:1.65;color:#526158;margin:0 0 22px}.meta{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:13px 0;display:flex;flex-wrap:wrap;gap:8px 21px;color:var(--muted);font-size:11px}.body-copy{margin:34px 0;background:var(--white);border:1px solid var(--line);border-radius:7px;padding:clamp(20px,5vw,36px)}.body-copy p{font-size:15px;line-height:1.85;color:#3f4b44;margin:0 0 17px}.body-copy p:last-child{margin-bottom:0}.source-box{border-left:3px solid #e5b77b;padding:15px 18px;margin:27px 0;background:#f1eee5;color:#56635b;font-size:12px;line-height:1.65}.source-link{display:inline-flex;align-items:center;gap:9px;background:var(--green);color:white;padding:13px 18px;border-radius:999px;font-size:12px;font-weight:800}.source-link:hover{background:#11543e}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:23px}.share{border:1px solid var(--line);border-radius:999px;padding:10px 14px;background:var(--white);font-size:11px;font-weight:800}.share.wa{color:#167b4b}.share.fb{color:#315c9a}.notice{color:#859087;font-size:10px;margin-top:25px}.error{padding:45px 0;text-align:center;color:var(--muted)}footer{border-top:1px solid var(--line);padding:20px 0;color:var(--muted);font-size:10px}
+    @media(max-width:600px){.head-inner{height:70px}.brand-name{font-size:22px}.back{font-size:11px}main{padding-top:32px}.article h1{font-size:38px}.body-copy{padding:20px}}
+  </style>
+</head>
+<body>
+  <div class="top"><div class="wrap">BRASIL E MUNDO · NOTÍCIAS COM FONTE IDENTIFICADA</div></div>
+  <header class="head"><div class="wrap head-inner"><a class="brand" href="./"><span class="mark">EF</span><span class="brand"><span><span class="brand-name">em<b>foco</b>.</span><small>INFORMAÇÃO QUE APROXIMA</small></span></span></a><a class="back" href="./">← Voltar às notícias</a></div></header>
+  <main class="wrap"><article class="article" id="article"><div class="error">Carregando a notícia…</div></article></main>
+  <footer><div class="wrap">Em Foco · O resumo e a referência ajudam você a acompanhar a notícia sem sair desta página.</div></footer>
+  <script>
+    const articleEl=document.getElementById('article');
+    const params=new URLSearchParams(location.search);
+    const requested=params.get('url');
+    const safeUrl=value=>{try{const u=new URL(value);return u.protocol==='https:'?u.href:null}catch{return null}};
+    const dateText=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?'Data não informada':new Intl.DateTimeFormat('pt-BR',{dateStyle:'long',timeStyle:'short',timeZone:'America/Campo_Grande'}).format(d)};
+    function fail(message){articleEl.innerHTML='<div class="error"><h1>Notícia indisponível</h1><p>'+message+'</p><a class="source-link" href="./">Voltar para as notícias</a></div>'}
+    (async()=>{
+      if(!requested){fail('Volte à página inicial e selecione uma das matérias disponíveis.');return}
+      try{
+        const response=await fetch('./data/news.json',{cache:'no-store'});if(!response.ok)throw new Error();
+        const payload=await response.json();const item=(payload.articles||[]).find(row=>safeUrl(row.url)===safeUrl(requested));
+        if(!item)throw new Error();
+        const original=safeUrl(item.url);if(!original)throw new Error();
+        document.title=item.title+' — Em Foco';
+        const shareUrl=location.href;
+        const wa='https://wa.me/?text='+encodeURIComponent(item.title+' — '+shareUrl+' | Via Em Foco');
+        const fb='https://www.facebook.com/sharer/sharer.php?u='+encodeURIComponent(shareUrl);
+        articleEl.innerHTML='';
+        const kicker=document.createElement('div');kicker.className='kicker';kicker.textContent=(item.category||'Notícias')+' · '+(item.source||'Fonte identificada');
+        const title=document.createElement('h1');title.textContent=item.title;
+        const summary=document.createElement('p');summary.className='summary';summary.textContent=item.summary||'Acesse a publicação original para consultar os detalhes completos desta notícia.';
+        const meta=document.createElement('div');meta.className='meta';const source=document.createElement('span');source.textContent='Fonte: '+(item.source||'Publicação original');const published=document.createElement('span');published.textContent='Publicado em '+dateText(item.publishedAt);meta.append(source,published);
+        const copy=document.createElement('div');copy.className='body-copy';const p1=document.createElement('p');p1.textContent=item.summary||'Esta página apresenta a chamada da matéria e sua fonte original.';const p2=document.createElement('p');p2.textContent='O Em Foco mantém a leitura nesta página e identifica a origem da informação. Para conferir a reportagem completa, dados adicionais e eventuais atualizações, consulte a publicação oficial.';copy.append(p1,p2);
+        const sourceBox=document.createElement('div');sourceBox.className='source-box';sourceBox.textContent='Referência oficial: '+(item.source||'Agência Brasil / EBC')+'. O texto exibido aqui é um resumo curto do feed público; a reportagem completa pertence à fonte indicada.';
+        const sourceLink=document.createElement('a');sourceLink.className='source-link';sourceLink.href=original;sourceLink.target='_blank';sourceLink.rel='noopener noreferrer';sourceLink.textContent='Ler reportagem completa na fonte oficial ↗';
+        const actions=document.createElement('div');actions.className='actions';const f=document.createElement('a');f.className='share fb';f.href=fb;f.target='_blank';f.rel='noopener noreferrer';f.textContent='Compartilhar no Facebook';const w=document.createElement('a');w.className='share wa';w.href=wa;w.target='_blank';w.rel='noopener noreferrer';w.title='No WhatsApp, escolha um contato ou Meu status';w.textContent='WhatsApp / Status';actions.append(f,w);
+        const note=document.createElement('p');note.className='notice';note.textContent='O Em Foco não reproduz a reportagem integral. A referência oficial permanece disponível para consulta em uma nova aba.';
+        articleEl.append(kicker,title,summary,meta,copy,sourceBox,sourceLink,actions,note);
+      }catch(error){fail('Esta chamada pode ter saído do feed mais recente. Confira as notícias atuais na página inicial.')}
+    })();
+  </script>
+</body>
+</html>
