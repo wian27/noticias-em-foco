@@ -17,8 +17,9 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
+from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 
 FEEDS = [
@@ -98,6 +99,63 @@ def clean_summary(value: str) -> str:
     return value
 
 
+class RSSImageParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.urls: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() != "img":
+            return
+        values = dict(attrs)
+        for key in ("src", "data-src", "data-original"):
+            value = values.get(key)
+            if value:
+                self.urls.append(value.strip())
+        srcset = values.get("srcset")
+        if srcset:
+            first = srcset.split(",", 1)[0].strip().split()
+            if first:
+                self.urls.append(first[0])
+
+
+def official_image_url(value: str, article_url: str) -> str | None:
+    if not value:
+        return None
+    image_url = urljoin(article_url, html.unescape(value.strip()))
+    parsed = urlparse(image_url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not (host == "ebc.com.br" or host.endswith(".ebc.com.br")):
+        return None
+    return image_url
+
+
+def feed_image_url(item: ET.Element, article_url: str) -> str | None:
+    # RSS media:content, media:thumbnail and image enclosures are common feed formats.
+    for node in item.iter():
+        tag = local_name(node.tag)
+        attrs = {local_name(key): value for key, value in node.attrib.items()}
+        if tag in {"thumbnail", "content", "enclosure"}:
+            media_type = (attrs.get("type") or "").lower()
+            medium = (attrs.get("medium") or "").lower()
+            if tag == "enclosure" and media_type and not media_type.startswith("image/"):
+                continue
+            if media_type and not media_type.startswith("image/") and medium != "image":
+                continue
+            candidate = attrs.get("url") or attrs.get("href") or attrs.get("src")
+            image = official_image_url(candidate or "", article_url)
+            if image:
+                return image
+        if tag in {"description", "encoded"}:
+            parser = RSSImageParser()
+            parser.feed("".join(node.itertext()))
+            for candidate in parser.urls:
+                image = official_image_url(candidate, article_url)
+                if image:
+                    return image
+    return None
+
+
 def parse_date(value: str) -> str | None:
     if not value:
         return None
@@ -160,6 +218,7 @@ def read_feed(category: str, url: str) -> list[dict[str, str | None]]:
             "source": SOURCE,
             "category": category,
             "publishedAt": parse_date(date_text),
+            "imageUrl": feed_image_url(item, link),
         })
     return entries
 
@@ -191,6 +250,8 @@ def query_gdelt(query: str, region_key: str, region_name: str, state_code: str) 
         if not title or parsed_url.scheme != "https" or not parsed_url.hostname:
             continue
         source = (row.get("domain") or parsed_url.hostname or "Fonte externa").removeprefix("www.")
+        image_url = row.get("socialimage") or row.get("image")
+        image_parsed = urlparse(image_url or "")
         articles.append({
             "title": title[:240],
             "summary": "",
@@ -201,6 +262,7 @@ def query_gdelt(query: str, region_key: str, region_name: str, state_code: str) 
             "regionKey": region_key,
             "regionName": region_name,
             "stateCode": state_code,
+            "imageUrl": image_url if image_parsed.scheme == "https" else None,
         })
     return articles
 
