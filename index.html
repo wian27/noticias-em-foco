@@ -108,12 +108,17 @@
       const selectedRegionKey='emfoco.local.region.v1';
       function renderLocalRegion(key){
         if(!localPayload||!key)return;
-        const articles=(localPayload.regions&&localPayload.regions[key]||[]).slice().sort((a,b)=>(b.publishedAt||'').localeCompare(a.publishedAt||'')).slice(0,6);
         const label=localPayload.locations.find(item=>item.key===key);
+        let sourceKey=key;
+        let articles=(localPayload.regions&&localPayload.regions[sourceKey]||[]).slice();
+        let fallback=false;
+        if(!articles.length&&label&&label.type==='city'){sourceKey='state:'+label.stateCode;articles=(localPayload.regions&&localPayload.regions[sourceKey]||[]).slice();fallback=articles.length>0}
+        articles.sort((a,b)=>(b.publishedAt||'').localeCompare(a.publishedAt||''));
+        articles=articles.slice(0,6);
         localGrid.replaceChildren();
-        if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos chamadas recentes para esta região. Escolha outra cidade ou o estado para ampliar a busca.';localGrid.append(empty);return}
+        if(!articles.length){const empty=document.createElement('div');empty.className='local-empty';empty.textContent='Não encontramos chamadas recentes para esta região. Tente buscar a cidade pelo campo acima ou selecione o estado.';localGrid.append(empty);return}
         localGrid.replaceChildren(...articles.map(story));
-        localStatus.textContent='Notícias para '+(label?label.name+(label.type==='city'?' · '+label.stateCode:''):'sua região')+' · '+articles.length+' matéria(s) · atualizado em '+formatTime(localPayload.fetchedAt);
+        localStatus.textContent=(fallback?'Sem matérias específicas desta cidade; mostrando notícias do estado. ':'Notícias para ')+(label?label.name+(label.type==='city'?' · '+label.stateCode:''):'sua região')+' · '+articles.length+' matéria(s) · atualizado em '+formatTime(localPayload.fetchedAt);
       }
       async function loadLocalNews(){
         try{
