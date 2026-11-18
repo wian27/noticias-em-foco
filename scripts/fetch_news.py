@@ -128,7 +128,7 @@ def official_image_url(value: str, article_url: str) -> str | None:
     if parsed.scheme != "https" or not (host == "ebc.com.br" or host.endswith(".ebc.com.br")):
         return None
     # EBC's RSS endpoint returns this 1×1 tracking pixel as a media enclosure.
-    if parsed.path.rstrip("/").rsplit("/", 1)[-1].lower() == "ebc.png":
+    if parsed.path.rstrip("/").rsplit("/", 1)[-1].lower() in {"ebc.png", "ebc.gif"}:
         return None
     return image_url
 
@@ -173,6 +173,16 @@ class ArticleImageParser(HTMLParser):
                 content = values.get("content")
                 if content:
                     self.urls.append(content.strip())
+        elif tag.lower() == "img":
+            alt = (values.get("alt") or "").lower()
+            if not re.search(r"logo|ícone|icon|avatar", alt):
+                for key in ("src", "data-src", "data-lazy-src", "data-original"):
+                    value = values.get(key)
+                    if value:
+                        self.urls.append(value.strip())
+                srcset = values.get("srcset")
+                if srcset:
+                    self.urls.extend(part.strip().split()[0] for part in srcset.split(",") if part.strip())
         elif tag.lower() == "link" and "image_src" in (values.get("rel") or "").lower():
             href = values.get("href")
             if href:
