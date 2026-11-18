@@ -44,7 +44,10 @@ def child_text(element: ET.Element, name: str) -> str:
 def clean_summary(value: str) -> str:
     value = re.sub(r"<[^>]+>", " ", value or "")
     value = html.unescape(value)
-    return re.sub(r"\s+", " ", value).strip()[:360]
+    value = re.sub(r"\s+", " ", value).strip()
+    if len(value) > 320:
+        value = value[:320].rsplit(" ", 1)[0].rstrip(" ,.;:-") + "…"
+    return value
 
 
 def parse_date(value: str) -> str | None:
